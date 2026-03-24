@@ -1,8 +1,8 @@
 streamlit
 pandas
-numpy
 plotly
+sqlalchemy
+psycopg2-binary
 wordcloud
 matplotlib
-matplotlib-venn
 openpyxl
