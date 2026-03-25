@@ -352,7 +352,7 @@ with tabs[5]:
         summary_points = []
         # 1. 市场特征（下沉市场）
         if any('下沉' in str(n) for n in notes):
-            summary_points.append("- 下沉市场门店价格较低，销量好，谷歌评价较多。")
+            summary_points.append("- 下沉市场门店价格较低，销量好。")
         # 2. 合规与认证
         if any('AFNOR' in str(n) for n in notes):
             summary_points.append("- AFNOR认证：客户可送检产品获取官方证明。")
@@ -460,7 +460,7 @@ with tabs[7]:
     st.subheader("数据质量提示")
     missing_fields = []
     if filtered_shops['key_taste_goodpoint'].isna().sum() > len(filtered_shops) * 0.5:
-        missing_fields.append("口感优点记录不足，建议培训调研员多询问店员的具体评价。")
+        missing_fields.append("口感优点记录不足，建议培训业务多询问店员的具体评价。")
     if filtered_prices.empty:
         missing_fields.append("价格数据缺失较多，建议在调研时重点记录价格信息。")
     if filtered_flavors.empty:
