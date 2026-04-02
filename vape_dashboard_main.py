@@ -168,18 +168,25 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("畅销品牌排行榜")
     prod_type = st.selectbox("产品类型", filtered_brands['product_type'].unique())
-    top_brands = filtered_brands[filtered_brands['product_type'] == prod_type]['brand'].value_counts().head(10)
-    fig = px.bar(x=top_brands.values, y=top_brands.index, orientation='h',
-                 labels={'x':'提及次数', 'y':'品牌'}, title=f"Top 10 {prod_type} 品牌")
+    
+    # 品牌计数并降序排序
+    brand_counts = filtered_brands[filtered_brands['product_type'] == prod_type]['brand'].value_counts().head(10).reset_index()
+    brand_counts.columns = ['brand', 'count']
+    brand_counts = brand_counts.sort_values('count', ascending=False)
+    # 关键：指定 category_orders 为降序后的品牌列表
+    fig = px.bar(brand_counts, x='count', y='brand', orientation='h',
+                 labels={'count':'提及次数', 'brand':'品牌'}, title=f"Top 10 {prod_type} 品牌",
+                 category_orders={'brand': brand_counts['brand'].tolist()})
     st.plotly_chart(fig, use_container_width=True)
 
     show_local_only = st.checkbox("仅显示本地品牌")
     if show_local_only:
         local_brand_names = filtered_local_brands[filtered_local_brands['is_local'] == True]['brand'].unique()
-        top_brands_local = top_brands[top_brands.index.isin(local_brand_names)]
-        if not top_brands_local.empty:
-            fig = px.bar(x=top_brands_local.values, y=top_brands_local.index, orientation='h',
-                         title="本地品牌排行榜")
+        brand_counts_local = brand_counts[brand_counts['brand'].isin(local_brand_names)]
+        if not brand_counts_local.empty:
+            brand_counts_local = brand_counts_local.sort_values('count', ascending=False)
+            fig = px.bar(brand_counts_local, x='count', y='brand', orientation='h', title="本地品牌排行榜",
+                         category_orders={'brand': brand_counts_local['brand'].tolist()})
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("没有本地品牌数据")
@@ -187,7 +194,6 @@ with tabs[1]:
     st.subheader("品牌竞争优势")
     advantages = filtered_shops['competitive_advantage'].dropna()
     if not advantages.empty:
-        # 拆分竞争优势关键词
         all_adv = []
         for adv in advantages:
             parts = re.split(r'[;,，]+', str(adv))
@@ -198,7 +204,9 @@ with tabs[1]:
         adv_series = pd.Series(all_adv)
         adv_counts = adv_series.value_counts().reset_index()
         adv_counts.columns = ['竞争优势', '提及次数']
-        fig = px.bar(adv_counts.head(10), x='提及次数', y='竞争优势', orientation='h', title="竞争优势关键词 Top 10")
+        adv_counts = adv_counts.sort_values('提及次数', ascending=False).head(10)
+        fig = px.bar(adv_counts, x='提及次数', y='竞争优势', orientation='h', title="竞争优势关键词 Top 10",
+                     category_orders={'竞争优势': adv_counts['竞争优势'].tolist()})
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("暂无竞争优势数据")
@@ -214,9 +222,12 @@ with tabs[2]:
     else:
         flavor_data = filtered_flavors[filtered_flavors['source'] == 'staff_favorite']
 
-    top_flavors = flavor_data['flavor'].value_counts().head(15)
-    fig = px.bar(x=top_flavors.values, y=top_flavors.index, orientation='h',
-                 labels={'x':'提及次数', 'y':'口味'}, title="畅销/喜好口味 Top 15")
+    flavor_counts = flavor_data['flavor'].value_counts().head(15).reset_index()
+    flavor_counts.columns = ['flavor', 'count']
+    flavor_counts = flavor_counts.sort_values('count', ascending=False)
+    fig = px.bar(flavor_counts, x='count', y='flavor', orientation='h',
+                 labels={'count':'提及次数', 'flavor':'口味'}, title="畅销/喜好口味 Top 15",
+                 category_orders={'flavor': flavor_counts['flavor'].tolist()})
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("口感关注点")
@@ -233,7 +244,9 @@ with tabs[2]:
     if not taste_good.empty:
         good_counts = taste_good.value_counts().head(10).reset_index()
         good_counts.columns = ['口感优点', '提及次数']
-        fig = px.bar(good_counts, x='提及次数', y='口感优点', orientation='h', title="口感优点 Top 10")
+        good_counts = good_counts.sort_values('提及次数', ascending=False)
+        fig = px.bar(good_counts, x='提及次数', y='口感优点', orientation='h', title="口感优点 Top 10",
+                     category_orders={'口感优点': good_counts['口感优点'].tolist()})
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("暂无口感优点数据")
@@ -352,7 +365,7 @@ with tabs[5]:
         summary_points = []
         # 1. 市场特征（下沉市场）
         if any('下沉' in str(n) for n in notes):
-            summary_points.append("- 下沉市场门店价格较低，销量好。")
+            summary_points.append("- 下沉市场门店价格较低，销量好，谷歌评价较多。")
         # 2. 合规与认证
         if any('AFNOR' in str(n) for n in notes):
             summary_points.append("- AFNOR认证：客户可送检产品获取官方证明。")
@@ -460,7 +473,7 @@ with tabs[7]:
     st.subheader("数据质量提示")
     missing_fields = []
     if filtered_shops['key_taste_goodpoint'].isna().sum() > len(filtered_shops) * 0.5:
-        missing_fields.append("口感优点记录不足，建议培训业务多询问店员的具体评价。")
+        missing_fields.append("口感优点记录不足，建议培训调研员多询问店员的具体评价。")
     if filtered_prices.empty:
         missing_fields.append("价格数据缺失较多，建议在调研时重点记录价格信息。")
     if filtered_flavors.empty:
