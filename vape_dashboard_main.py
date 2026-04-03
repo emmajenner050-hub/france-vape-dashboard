@@ -143,7 +143,7 @@ tabs = st.tabs([
     "🍭 口味与口感",
     "💰 定价与包装",
     "🌍 区域差异",
-    "⚖️ 销售法规与灰色操作",
+    "⚖️ 销售法规",
     "📝 调研总结",
     "💡 行动建议"
 ])
@@ -169,11 +169,9 @@ with tabs[1]:
     st.subheader("畅销品牌排行榜")
     prod_type = st.selectbox("产品类型", filtered_brands['product_type'].unique())
     
-    # 品牌计数并降序排序
     brand_counts = filtered_brands[filtered_brands['product_type'] == prod_type]['brand'].value_counts().head(10).reset_index()
     brand_counts.columns = ['brand', 'count']
     brand_counts = brand_counts.sort_values('count', ascending=False)
-    # 关键：指定 category_orders 为降序后的品牌列表
     fig = px.bar(brand_counts, x='count', y='brand', orientation='h',
                  labels={'count':'提及次数', 'brand':'品牌'}, title=f"Top 10 {prod_type} 品牌",
                  category_orders={'brand': brand_counts['brand'].tolist()})
@@ -312,7 +310,6 @@ with tabs[4]:
                 city = cities[i+j]
                 with col:
                     st.markdown(f"### {city}")
-                    # 价格差异总结（按规格）
                     if not filtered_prices.empty:
                         price_with_city = filtered_prices.merge(filtered_shops[['id', 'city']], left_on='shop_id', right_on='id')
                         city_price = price_with_city[price_with_city['city'] == city]
@@ -327,7 +324,6 @@ with tabs[4]:
                                     st.markdown(f"- {size}ml：{row_stats['min']:.2f}欧 - {row_stats['max']:.2f}欧")
                         else:
                             st.info("无价格数据")
-                    # 热销品牌对比（按产品类型）
                     st.markdown("**热销品牌**")
                     city_shop_ids = filtered_shops[filtered_shops['city'] == city]['id'].tolist()
                     for prod_type in ['open', 'disposable', 'eliquid']:
@@ -338,7 +334,6 @@ with tabs[4]:
                             st.markdown(f"- {prod_type.upper()}: {', '.join(top3)}")
                         else:
                             st.markdown(f"- {prod_type.upper()}: 无数据")
-                    # 受欢迎口味对比
                     st.markdown("**热门口味**")
                     city_flavors = filtered_flavors[filtered_flavors['shop_id'].isin(city_shop_ids)]
                     if not city_flavors.empty:
@@ -348,7 +343,7 @@ with tabs[4]:
                         st.info("无口味数据")
                     st.markdown("---")
 
-# ---------- 6. 销售法规与灰色操作 ----------
+# ---------- 6. 销售法规 ----------
 with tabs[5]:
     st.subheader("法规解释准确性")
     if 'regulation_accuracy' in filtered_shops.columns:
@@ -358,57 +353,65 @@ with tabs[5]:
     else:
         st.info("暂无法规准确性字段")
 
-    # 智能归纳其他重要信息
+    # 其他重要信息总结：自动识别城区
     st.subheader("其他重要信息总结")
-    notes = filtered_shops['additional_notes'].dropna().unique()
-    if len(notes) > 0:
-        summary_points = []
-        # 1. 市场特征（下沉市场）
-        if any('下沉' in str(n) for n in notes):
-            summary_points.append("- 下沉市场门店价格较低，销量好，谷歌评价较多。")
-        # 2. 合规与认证
-        if any('AFNOR' in str(n) for n in notes):
-            summary_points.append("- AFNOR认证：客户可送检产品获取官方证明。")
-        if any('尼古丁' in str(n) for n in notes):
-            summary_points.append("- 部分门店存在额外添加尼古丁的操作（50ml 0mg 产品需自行添加尼古丁）。")
-        # 3. 销售策略
-        if any('10ml份额' in str(n) for n in notes):
-            summary_points.append("- 10ml 小瓶装份额下降，部分门店因利润低不再销售。")
-        if any('自有品牌' in str(n) for n in notes):
-            summary_points.append("- 连锁店倾向推广自有品牌，注重口感细腻无残留。")
-        if any('50ml0mg' in str(n) for n in notes):
-            summary_points.append("- 50ml 0mg 产品销量极好，均需额外添加尼古丁。")
-        if any('谷歌评价' in str(n) for n in notes):
-            summary_points.append("- 下沉市场门店谷歌评价多，口碑良好。")
-        # 如果以上规则都没匹配到，则直接显示去重后的原始内容
-        if not summary_points:
-            for note in notes:
-                summary_points.append(f"- {note}")
-        for point in summary_points:
-            st.write(point)
-    else:
-        st.info("无其他重要信息")
+    
+    # 定义浓缩文本及其匹配规则（关键词列表）
+    # 每条浓缩文本对应一组关键词，只要补充信息包含任一关键词即匹配
+    summary_config = [
+        ("50ml 0mg 的卖的很好，都是额外添加尼古丁", ["50ml", "0mg", "额外添加尼古丁", "添加尼古丁"]),
+        ("电子烟不需要证明，香烟需要烟草许可证。AFNOR：客户拿产品去化验，官方给一个证明文件", ["AFNOR", "烟草许可证", "电子烟不需要证明"]),
+        ("不卖10ml的，认为利润太低且卖的油均是0mg，需要额外添加尼古丁", ["不卖10ml", "利润太低", "10ml", "0mg", "额外添加尼古丁"]),
+        ("每家连锁店都在推自己的品牌，口感要细腻无残留", ["连锁店", "自己的品牌", "推自己的品牌", "细腻无残留"]),
+        ("10ml份额下降严重", ["10ml份额", "份额下降"]),
+        ("所调研的区比较下沉，销量却很好，谷歌评价很多，平均价格低蛮多", ["下沉", "谷歌评价", "平均价格低"]),
+        ("莓果类口味在这边卖的好", ["莓果", "莓果类"]),
+        ("连锁大店好像都没有返点激励", ["返点激励", "没有返点"]),
+    ]
+    
+    # 获取所有有补充信息的店铺（城区 + 补充信息原始文本）
+    notes_data = filtered_shops[['city', 'additional_notes']].dropna(subset=['additional_notes'])
+    
+    # 初始化：每条浓缩文本对应的城区集合
+    from collections import defaultdict
+    text_to_cities = defaultdict(set)
+    
+    # 对每条补充信息，判断它匹配哪些浓缩文本
+    for _, row in notes_data.iterrows():
+        city = row['city']
+        note = str(row['additional_notes']).lower()
+        for text, keywords in summary_config:
+            # 如果任意关键词出现在补充信息中，则认为匹配
+            if any(keyword.lower() in note for keyword in keywords):
+                text_to_cities[text].add(city)
+    
+    # 显示结果
+    for text, cities in text_to_cities.items():
+        if cities:
+            city_str = "、".join(sorted(cities))
+            st.write(f"（{city_str}）{text}")
+        else:
+            # 如果没有匹配到任何城区，仍然显示文本（不标注）
+            st.write(f"{text}")
+    
+    # 如果没有任何匹配，给出提示
+    if not text_to_cities:
+        st.info("暂无匹配的重要信息")
 
     st.subheader("销售限制要求")
     restrictions = filtered_shops['sales_restrictions'].dropna().unique()
     if len(restrictions) > 0:
         res_summary = []
-        # TPD 标准
         if any('tpd' in str(r).lower() for r in restrictions):
             res_summary.append("- 产品需符合 TPD 标准（10ml 及以下含尼古丁，50ml 及以上为 0mg 需额外添加）。")
-        # 尼古丁上限
         if any('20mg' in str(r) for r in restrictions):
             res_summary.append("- 尼古丁含量最高不超过 20mg/ml。")
-        # 年龄限制
         if any('18' in str(r) for r in restrictions):
             res_summary.append("- 购买者需年满 18 周岁。")
-        # 包装要求
         if any('包装' in str(r) for r in restrictions):
             res_summary.append("- 对包装设计无特殊要求。")
-        # 开店许可
         if any('文件' in str(r) or '申请' in str(r) for r in restrictions):
             res_summary.append("- 开店需向官方申请相关文件（如烟草许可证）。")
-        # 如果以上都没匹配到，则显示去重后的原始内容
         if not res_summary:
             for res in restrictions:
                 res_summary.append(f"- {res}")
@@ -444,7 +447,6 @@ with tabs[6]:
             if pd.notna(avg_price):
                 price_summary[f"{size}ml"] = f"{avg_price:.2f}欧"
 
-    # 从优势关键词中提取额外洞察
     advantages_text = filtered_shops['competitive_advantage'].dropna()
     all_adv_words = []
     for adv in advantages_text:
@@ -473,7 +475,7 @@ with tabs[7]:
     st.subheader("数据质量提示")
     missing_fields = []
     if filtered_shops['key_taste_goodpoint'].isna().sum() > len(filtered_shops) * 0.5:
-        missing_fields.append("口感优点记录不足，建议培训调研员多询问店员的具体评价。")
+        missing_fields.append("口感优点记录不足，建议业务多询问店员的具体评价。")
     if filtered_prices.empty:
         missing_fields.append("价格数据缺失较多，建议在调研时重点记录价格信息。")
     if filtered_flavors.empty:
@@ -485,9 +487,6 @@ with tabs[7]:
         st.write("数据质量良好，继续保持！")
 
     st.subheader("业务改进建议")
-
-    # 从数据中动态生成建议
-    # 1. 产品研发建议：基于热门口味和口感优点
     top_flavors = filtered_flavors['flavor'].value_counts().head(3).index.tolist() if not filtered_flavors.empty else []
     top_taste_advantage = filtered_shops['key_taste_goodpoint'].value_counts().head(1).index[0] if not filtered_shops['key_taste_goodpoint'].dropna().empty else None
     popular_sizes = filtered_prices['size_ml'].value_counts().head(2).index.tolist() if not filtered_prices.empty else []
@@ -500,7 +499,6 @@ with tabs[7]:
     product_advice = f"- **产品研发**：重点关注{flavor_str}等热门口味，以及{top_taste_advantage or '核心口感'}等优点，开发符合{size_str}包装和{nic_str}尼古丁含量的产品。"
     st.markdown(product_advice)
 
-    # 2. 销售策略建议：基于连锁/独立店激励差异
     chain_incentive = filtered_shops[filtered_shops['is_chain'] == True]['sales_incentive'].value_counts()
     nonchain_incentive = filtered_shops[filtered_shops['is_chain'] == False]['sales_incentive'].value_counts()
     if not chain_incentive.empty and not nonchain_incentive.empty:
@@ -511,7 +509,6 @@ with tabs[7]:
         sales_advice = "- **销售策略**：针对连锁店可提供返点激励，针对独立店可加强本地品牌合作；下沉市场可主打性价比产品。"
     st.markdown(sales_advice)
 
-    # 3. 法规合规建议：基于法规准确性数据和销售限制
     reg_acc = filtered_shops['regulation_accuracy'].value_counts()
     if '准确' in reg_acc.index and reg_acc['准确'] / len(filtered_shops) > 0.8:
         reg_advice = "- **法规合规**：多数门店法规解释准确，但仍需确保产品符合TPD标准，避免灰色操作风险。"
@@ -519,7 +516,6 @@ with tabs[7]:
         reg_advice = "- **法规合规**：确保产品符合TPD标准，规避合规风险。"
     st.markdown(reg_advice)
 
-    # 额外：如有灰色操作记录，给出提示
     gray_notes = filtered_shops['additional_notes'].dropna()
     if len(gray_notes) > 0:
         st.markdown("- **灰色操作提示**：部分门店存在额外添加尼古丁等操作，需关注合规风险，操作标准。")
