@@ -504,7 +504,7 @@ with tabs[7]:
     if not chain_incentive.empty and not nonchain_incentive.empty:
         chain_mode = chain_incentive.index[0] if len(chain_incentive) > 0 else "未知"
         nonchain_mode = nonchain_incentive.index[0] if len(nonchain_incentive) > 0 else "未知"
-        sales_advice = f"- **销售策略**：针对想要做销售激励的店铺可事先在国内先行找到对应负责人，后续到当地拜访并进行针对性沟通；同时关注本地品牌合作与性价比产品。"
+        sales_advice = f"- **销售策略**：针对想要做销售激励的店铺可事先在国内找到对应负责人，后续到当地拜访并进行针对性沟通；同时关注本地品牌合作与性价比产品。"
     else:
         sales_advice = "- **销售策略**：针对连锁店可提供返点激励，针对独立店可加强本地品牌合作；下沉市场可主打性价比产品。"
     st.markdown(sales_advice)
