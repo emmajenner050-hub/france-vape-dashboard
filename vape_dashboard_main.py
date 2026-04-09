@@ -496,7 +496,7 @@ with tabs[7]:
     size_str = "、".join([f"{int(s)}ml" for s in popular_sizes]) if popular_sizes else "主流规格"
     nic_str = "、".join([f"{int(n)}mg" for n in popular_nic]) if popular_nic else "主流浓度"
 
-    product_advice = f"- **产品研发**：重点关注{flavor_str}等热门口味，以及{top_taste_advantage or '核心口感'}等优点，开发符合{size_str}包装和{nic_str}尼古丁含量的产品。"
+    product_advice = f"- **产品研发**：重点关注{flavor_str}等热门口味，以及{top_taste_advantage or '核心口感'}等优点，开发符合50ml包装和0mg尼古丁含量的产品。"
     st.markdown(product_advice)
 
     chain_incentive = filtered_shops[filtered_shops['is_chain'] == True]['sales_incentive'].value_counts()
@@ -504,7 +504,7 @@ with tabs[7]:
     if not chain_incentive.empty and not nonchain_incentive.empty:
         chain_mode = chain_incentive.index[0] if len(chain_incentive) > 0 else "未知"
         nonchain_mode = nonchain_incentive.index[0] if len(nonchain_incentive) > 0 else "未知"
-        sales_advice = f"- **销售策略**：连锁店偏好激励方式为“{chain_mode}”，独立店偏好“{nonchain_mode}”，可针对性制定方案；同时关注本地品牌合作与性价比产品。"
+        sales_advice = f"- **销售策略**：针对想要做销售激励的店铺可事先在国内先行找到对应负责人，后续到当地拜访并进行针对性沟通；同时关注本地品牌合作与性价比产品。"
     else:
         sales_advice = "- **销售策略**：针对连锁店可提供返点激励，针对独立店可加强本地品牌合作；下沉市场可主打性价比产品。"
     st.markdown(sales_advice)
